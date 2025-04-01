@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Área do Supervisor - Controle de Manutenções</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="sup.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="material-icons">supervisor_account</i> Área do Supervisor</h1>
+        
+        <div class="abas">
+            <div class="aba ativa" data-aba="abertas">Manutenções Abertas</div>
+            <div class="aba" data-aba="concluidas">Manutenções Concluídas</div>
+            <div class="logout-btn" id="logout-btn">
+                <i class="material-icons">exit_to_app</i> Sair
+            </div>
+        </div>
+        
+        <!-- Aba de Manutenções Abertas -->
+        <div id="abertas" class="conteudo-aba ativa">
+            <div class="form-manutencao">
+                <h2><i class="material-icons">add_circle</i> Abrir Nova Manutenção</h2>
+                <div class="form-group">
+                    <label for="titulo"><i class="material-icons">title</i> Título:</label>
+                    <input type="text" id="titulo" placeholder="Título da manutenção" required maxlength="99">
+                </div>
+                <div class="form-group">
+                    <label for="descricao"><i class="material-icons">description</i> Descrição:</label>
+                    <textarea id="descricao" placeholder="Descreva detalhadamente o que precisa ser feito" required maxlength="499"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="prioridade"><i class="material-icons">priority_high</i> Prioridade:</label>
+                    <select id="prioridade" required>
+                        <option value="alta">Alta</option>
+                        <option value="media" selected>Média</option>
+                        <option value="baixa">Baixa</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="data-conclusao"><i class="material-icons">event</i> Data de Conclusão:</label>
+                    <input type="date" id="data-conclusao" required>
+                </div>
+                <div class="form-group">
+                    <label for="imagem"><i class="material-icons">image</i> Imagem (opcional, máximo 1MB):</label>
+                    <input type="file" id="imagem" accept="image/*">
+                    <div class="tamanho-imagem" id="tamanho-imagem"></div>
+                </div>
+                <button class="btn" id="btn-salvar"><i class="material-icons">save</i> Salvar Manutenção</button>
+            </div>
+            
+            <h2><i class="material-icons">list_alt</i> Manutenções Abertas</h2>
+            <div id="manutencoes-abertas">
+                <!-- Manutenções abertas serão carregadas aqui -->
+            </div>
+        </div>
+        
+        <!-- Aba de Manutenções Concluídas -->
+        <div id="concluidas" class="conteudo-aba">
+            <h2><i class="material-icons">check_circle</i> Manutenções Concluídas</h2>
+            <div id="manutencoes-concluidas">
+                <!-- Manutenções concluídas serão carregadas aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Inicializa o Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRrFL9kSUeWrqknnusEGZJCKQLWvkubzo",
+            authDomain: "inventario-guizilim.firebaseapp.com",
+            databaseURL: "https://inventario-guizilim-default-rtdb.firebaseio.com",
+            projectId: "inventario-guizilim",
+            storageBucket: "inventario-guizilim.appspot.com",
+            messagingSenderId: "633517952118",
+            appId: "1:633517952118:web:c3d44f6d439c1bec75e357",
+            measurementId: "G-E7LJFPY8NM"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // Verificar autenticação e tipo de usuário
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'index.html';
+            } else {
+                // Verificar se o usuário é supervisor
+                database.ref('usuarios/' + user.uid).once('value').then(snapshot => {
+                    const userData = snapshot.val();
+                    if (!userData || userData.tipoUsuario !== 'supervisor') {
+                        auth.signOut().then(() => {
+                            window.location.href = 'index.html';
+                        });
+                    } else {
+                        // Usuário autenticado e é supervisor - carregar conteúdo
+                        carregarManutencoesAbertas();
+                    }
+                });
+            }
+        });
+        document.addEventListener('DOMContentLoaded', function() {
+    // Seleciona todas as abas
+    const abas = document.querySelectorAll('.aba');
+    
+    // Adiciona evento de clique para cada aba
+    abas.forEach(aba => {
+        aba.addEventListener('click', function() {
+            // Remove a classe 'ativa' de todas as abas
+            abas.forEach(a => a.classList.remove('ativa'));
+            
+            // Adiciona a classe 'ativa' apenas na aba clicada
+            this.classList.add('ativa');
+            
+            // Oculta todos os conteúdos de aba
+            document.querySelectorAll('.conteudo-aba').forEach(conteudo => {
+                conteudo.classList.remove('ativa');
+            });
+            
+            // Mostra o conteúdo correspondente à aba clicada
+            const abaAlvo = this.getAttribute('data-aba');
+            document.getElementById(abaAlvo).classList.add('ativa');
+        });
+    });
+    
+    // Carrega o conteúdo inicial da primeira aba
+    carregarManutencoesAbertas();
+});
+
+        // Referências
+        const manutencoesRef = database.ref('manutencoes');
+        const formElements = {
+            titulo: document.getElementById('titulo'),
+            descricao: document.getElementById('descricao'),
+            prioridade: document.getElementById('prioridade'),
+            dataConclusao: document.getElementById('data-conclusao'),
+            imagem: document.getElementById('imagem')
+        };
+        const tamanhoImagemElement = document.getElementById('tamanho-imagem');
+        const abas = document.querySelectorAll('.aba');
+        const conteudosAbas = document.querySelectorAll('.conteudo-aba');
+        const manutencoesAbertasContainer = document.getElementById('manutencoes-abertas');
+        const manutencoesConcluidasContainer = document.getElementById('manutencoes-concluidas');
+        const btnSalvar = document.getElementById('btn-salvar');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'index.html';
+            }).catch(error => {
+                console.error('Erro ao fazer logout:', error);
+            });
+        });
+
+        // Mostrar tamanho da imagem selecionada
+        formElements.imagem.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const tamanhoMB = this.files[0].size / 1024 / 1024;
+                tamanhoImagemElement.textContent = `Tamanho: ${tamanhoMB.toFixed(2)} MB`;
+                
+                if (tamanhoMB > 1) {
+                    alert('A imagem deve ter no máximo 1MB');
+                    this.value = '';
+                    tamanhoImagemElement.textContent = '';
+                }
+            }
+        });
+
+        // Função para converter imagem em Base64
+        function converterImagemParaBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Função para validar formato de data (YYYY-MM-DD)
+        function isValidDate(dateString) {
+            const regex = /^\d{4}-\d{2}-\d{2}$/;
+            return regex.test(dateString);
+        }
+
+        // Função para calcular dias restantes
+        function calcularDiasRestantes(dataConclusao) {
+            const hoje = new Date();
+            const dataConclusaoObj = new Date(dataConclusao);
+            const diffTime = dataConclusaoObj - hoje;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays;
+        }
+
+        // Função para determinar a classe de dias restantes
+        function getClasseDiasRestantes(dias) {
+            if (dias < 0) return 'critico';
+            if (dias <= 3) return 'atencao';
+            return 'normal';
+        }
+
+        // Função para ordenar manutenções por prioridade e data
+        function ordenarManutencoes(manutencoes) {
+            return manutencoes.sort((a, b) => {
+                const diasA = calcularDiasRestantes(a.dataConclusao);
+                const diasB = calcularDiasRestantes(b.dataConclusao);
+                const prioridades = { alta: 3, media: 2, baixa: 1 };
+                const prioridadeA = prioridades[a.prioridade];
+                const prioridadeB = prioridades[b.prioridade];
+                const scoreA = (diasA / 7) * (1 / prioridadeA);
+                const scoreB = (diasB / 7) * (1 / prioridadeB);
+                return scoreA - scoreB;
+            });
+        }
+
+        // Função para criar card de manutenção aberta
+        function criarCardManutencaoAberta(manutencao, key) {
+            const card = document.createElement('div');
+            card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+            
+            const diasRestantes = calcularDiasRestantes(manutencao.dataConclusao);
+            const classeDias = getClasseDiasRestantes(diasRestantes);
+            const textoDias = diasRestantes < 0 ? 
+                `Atrasada há ${Math.abs(diasRestantes)} dia(s)` : 
+                `${diasRestantes} dia(s) restante(s)`;
+            
+            let imagemHtml = '';
+            if (manutencao.imagemBase64) {
+                imagemHtml = `<img src="${manutencao.imagemBase64}" alt="Imagem da manutenção" class="imagem-manutencao">`;
+            }
+            
+            card.innerHTML = `
+                <div class="acoes">
+                    <button class="btn-excluir" data-key="${key}"><i class="material-icons">delete</i> Excluir</button>
+                </div>
+                <h3>${manutencao.titulo}</h3>
+                <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
+                
+                <div class="info-card">
+                    <div class="info-item">
+                        <i class="material-icons">priority_high</i>
+                        <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="material-icons">event</i>
+                        <span>Concluir até: ${manutencao.dataConclusao}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="material-icons">schedule</i>
+                        <span class="dias-restantes ${classeDias}">${textoDias}</span>
+                    </div>
+                </div>
+                ${imagemHtml}
+            `;
+            
+            card.querySelector('.btn-excluir').addEventListener('click', () => excluirManutencao(key));
+            return card;
+        }
+
+        // Função para criar card de manutenção concluída
+        function criarCardManutencaoConcluida(manutencao, key) {
+            const card = document.createElement('div');
+            card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+            
+            let imagemHtml = '';
+            if (manutencao.imagemBase64) {
+                imagemHtml = `<img src="${manutencao.imagemBase64}" alt="Imagem da manutenção" class="imagem-manutencao">`;
+            }
+            
+            let fotoConclusaoHtml = '';
+            if (manutencao.fotoConclusaoBase64) {
+                fotoConclusaoHtml = `
+                    <div class="detalhes-conclusao">
+                        <h4><i class="material-icons">photo_camera</i> Foto da Conclusão:</h4>
+                        <img src="${manutencao.fotoConclusaoBase64}" alt="Foto da conclusão" class="imagem-manutencao">
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                <h3>${manutencao.titulo}</h3>
+                <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
+                
+                <div class="info-card">
+                    <div class="info-item">
+                        <i class="material-icons">priority_high</i>
+                        <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="material-icons">event</i>
+                        <span>Prazo original: ${manutencao.dataConclusao}</span>
+                    </div>
+                </div>
+                ${imagemHtml}
+                
+                <div class="detalhes-conclusao">
+                    <h4><i class="material-icons">done_all</i> Detalhes da Conclusão:</h4>
+                    <p><strong>Responsável:</strong> ${manutencao.responsavel || 'Não informado'}</p>
+                    <p><strong>Data de Conclusão:</strong> ${manutencao.dataConclusaoReal || 'Não informada'}</p>
+                    <p><strong>Observações:</strong> ${manutencao.observacoes || 'Nenhuma observação registrada'}</p>
+                </div>
+                ${fotoConclusaoHtml}
+            `;
+            
+            return card;
+        }
+
+        // Função para carregar manutenções abertas
+        function carregarManutencoesAbertas() {
+            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
+            
+            manutencoesRef.orderByChild('status').equalTo('aberta').once('value')
+                .then(snapshot => {
+                    if (snapshot.exists()) {
+                        const manutencoes = [];
+                        snapshot.forEach(childSnapshot => {
+                            const manutencao = childSnapshot.val();
+                            manutencao.key = childSnapshot.key;
+                            manutencoes.push(manutencao);
+                        });
+                        
+                        const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
+                        
+                        if (manutencoesOrdenadas.length === 0) {
+                            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+                        } else {
+                            manutencoesAbertasContainer.innerHTML = '';
+                            manutencoesOrdenadas.forEach(manutencao => {
+                                const card = criarCardManutencaoAberta(manutencao, manutencao.key);
+                                manutencoesAbertasContainer.appendChild(card);
+                            });
+                        }
+                    } else {
+                        manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar manutenções abertas:', error);
+                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
+                });
+        }
+
+        // Função para carregar manutenções concluídas
+        function carregarManutencoesConcluidas() {
+            manutencoesConcluidasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
+            
+            manutencoesRef.orderByChild('status').equalTo('concluida').once('value')
+                .then(snapshot => {
+                    if (snapshot.exists()) {
+                        const manutencoes = [];
+                        snapshot.forEach(childSnapshot => {
+                            const manutencao = childSnapshot.val();
+                            manutencao.key = childSnapshot.key;
+                            manutencoes.push(manutencao);
+                        });
+                        
+                        // Ordena por data de conclusão (mais recente primeiro)
+                        manutencoes.sort((a, b) => {
+                            return new Date(b.dataConclusaoReal) - new Date(a.dataConclusaoReal);
+                        });
+                        
+                        if (manutencoes.length === 0) {
+                            manutencoesConcluidasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção concluída ainda.</div>';
+                        } else {
+                            manutencoesConcluidasContainer.innerHTML = '';
+                            manutencoes.forEach(manutencao => {
+                                const card = criarCardManutencaoConcluida(manutencao, manutencao.key);
+                                manutencoesConcluidasContainer.appendChild(card);
+                            });
+                        }
+                    } else {
+                        manutencoesConcluidasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção concluída ainda.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar manutenções concluídas:', error);
+                    manutencoesConcluidasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções concluídas.</div>';
+                });
+        }
+
+        // Função para salvar nova manutenção
+        btnSalvar.addEventListener('click', async () => {
+            const titulo = formElements.titulo.value.trim();
+            const descricao = formElements.descricao.value.trim();
+            const prioridade = formElements.prioridade.value;
+            const dataConclusao = formElements.dataConclusao.value;
+            const imagem = formElements.imagem.files[0];
+            
+            // Validações
+            if (!titulo || !descricao || !dataConclusao) {
+                alert('Preencha todos os campos obrigatórios!');
+                return;
+            }
+            
+            if (!isValidDate(dataConclusao)) {
+                alert('Formato de data inválido. Use YYYY-MM-DD');
+                return;
+            }
+            
+            if (titulo.length > 100) {
+                alert('O título deve ter no máximo 100 caracteres');
+                return;
+            }
+            
+            if (descricao.length > 500) {
+                alert('A descrição deve ter no máximo 500 caracteres');
+                return;
+            }
+            
+            let imagemBase64 = null;
+            
+            if (imagem) {
+                try {
+                    imagemBase64 = await converterImagemParaBase64(imagem);
+                } catch (error) {
+                    alert('Erro ao processar a imagem: ' + error.message);
+                    return;
+                }
+            }
+            
+            const novaManutencao = {
+                titulo,
+                descricao,
+                prioridade,
+                dataConclusao,
+                imagemBase64,
+                status: 'aberta',
+                dataAbertura: new Date().toISOString()
+            };
+            
+            manutencoesRef.push(novaManutencao)
+                .then(() => {
+                    alert('Manutenção cadastrada com sucesso!');
+                    // Limpar formulário
+                    formElements.titulo.value = '';
+                    formElements.descricao.value = '';
+                    formElements.prioridade.value = 'media';
+                    formElements.dataConclusao.value = '';
+                    formElements.imagem.value = '';
+                    tamanhoImagemElement.textContent = '';
+                    carregarManutencoesAbertas();
+                })
+                .catch(error => {
+                    console.error('Erro ao salvar manutenção:', error);
+                    alert('Erro ao salvar manutenção. Consulte o console para mais detalhes.');
+                });
+        });
+
+        // Função para excluir manutenção
+        function excluirManutencao(key) {
+            if (confirm('Tem certeza que deseja excluir esta manutenção?')) {
+                manutencoesRef.child(key).remove()
+                    .then(() => {
+                        console.log('Manutenção excluída com sucesso');
+                        carregarManutencoesAbertas();
+                    })
+                    .catch(error => {
+                        console.error('Erro ao excluir manutenção:', error);
+                        alert('Erro ao excluir manutenção. Consulte o console para mais detalhes.');
+                    });
+            }
+        }
+
+        // Event Listeners para abas
+        abas.forEach(aba => {
+            aba.addEventListener('click', () => {
+                if (aba.id === 'logout-btn') return;
+                
+                abas.forEach(a => a.classList.remove('ativa'));
+                conteudosAbas.forEach(c => c.classList.remove('ativa'));
+                
+                aba.classList.add('ativa');
+                document.getElementById(aba.dataset.aba).classList.add('ativa');
+                
+                if (aba.dataset.aba === 'abertas') {
+                    carregarManutencoesAbertas();
+                } else if (aba.dataset.aba === 'concluidas') {
+                    carregarManutencoesConcluidas();
+                }
+            });
+        });
+
+        // Configura a data mínima como hoje
+        const hoje = new Date().toISOString().split('T')[0];
+        formElements.dataConclusao.min = hoje;
+
+        // Carrega as manutenções abertas ao iniciar
+        carregarManutencoesAbertas();
+    </script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Tela de Login -->
+        <div id="login-container">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="Digite seu email">
+            </div>
+            <div class="form-group">
+                <label for="login-password">Senha</label>
+                <input type="password" id="login-password" placeholder="Digite sua senha">
+            </div>
+            <button id="login-button">Entrar</button>
+            <div class="toggle-form">
+                Não tem uma conta? <a id="show-register">Cadastre-se</a>
+            </div>
+            <div id="login-error" class="error-message"></div>
+        </div>
+        
+        <!-- Tela de Cadastro -->
+        <div id="register-container" class="hidden">
+            <h2>Criar Conta</h2>
+            <div class="form-group">
+                <label for="register-name">Nome Completo</label>
+                <input type="text" id="register-name" placeholder="Digite seu nome completo">
+            </div>
+            <div class="form-group">
+                <label for="register-email">Email</label>
+                <input type="email" id="register-email" placeholder="Digite seu email">
+            </div>
+            <div class="form-group">
+                <label for="register-password">Senha</label>
+                <input type="password" id="register-password" placeholder="Digite sua senha (mínimo 6 caracteres)">
+            </div>
+            <div class="form-group">
+                <label for="user-type">Tipo de Usuário</label>
+                <select id="user-type">
+                    <option value="operacao">Operação</option>
+                    <option value="supervisor">Supervisor</option>
+                </select>
+            </div>
+            <div class="form-group hidden" id="supervisor-code-group">
+                <label for="supervisor-code">Código de Supervisor</label>
+                <input type="password" id="supervisor-code" placeholder="Digite o código de supervisor">
+            </div>
+            <button id="register-button">Criar Conta</button>
+            <div class="toggle-form">
+                Já tem uma conta? <a id="show-login">Faça login</a>
+            </div>
+            <div id="register-error" class="error-message"></div>
+            <div id="register-success" class="success-message"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <script>
+        // Inicializa o Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRrFL9kSUeWrqknnusEGZJCKQLWvkubzo",
+            authDomain: "inventario-guizilim.firebaseapp.com",
+            databaseURL: "https://inventario-guizilim-default-rtdb.firebaseio.com",
+            projectId: "inventario-guizilim",
+            storageBucket: "inventario-guizilim.appspot.com",
+            messagingSenderId: "633517952118",
+            appId: "1:633517952118:web:c3d44f6d439c1bec75e357",
+            measurementId: "G-E7LJFPY8NM"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // Elementos da interface
+        const loginContainer = document.getElementById('login-container');
+        const registerContainer = document.getElementById('register-container');
+        const showRegister = document.getElementById('show-register');
+        const showLogin = document.getElementById('show-login');
+        const loginButton = document.getElementById('login-button');
+        const registerButton = document.getElementById('register-button');
+        const supervisorCodeGroup = document.getElementById('supervisor-code-group');
+        const userTypeSelect = document.getElementById('user-type');
+
+        // Alternar entre login e cadastro
+        showRegister.addEventListener('click', () => {
+            loginContainer.classList.add('hidden');
+            registerContainer.classList.remove('hidden');
+            document.getElementById('register-error').textContent = '';
+            document.getElementById('register-success').textContent = '';
+        });
+
+        showLogin.addEventListener('click', () => {
+            registerContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden');
+            document.getElementById('login-error').textContent = '';
+        });
+
+        // Mostrar campo de código de supervisor quando selecionado
+        userTypeSelect.addEventListener('change', () => {
+            if (userTypeSelect.value === 'supervisor') {
+                supervisorCodeGroup.classList.remove('hidden');
+            } else {
+                supervisorCodeGroup.classList.add('hidden');
+            }
+        });
+
+        // Função para validar email
+        function isValidEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
+
+        // Função para validar senha
+        function isValidPassword(password) {
+            return password.length >= 6;
+        }
+
+        // Função para cadastrar usuário
+        registerButton.addEventListener('click', async () => {
+            const name = document.getElementById('register-name').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+            const userType = userTypeSelect.value;
+            const supervisorCode = document.getElementById('supervisor-code').value;
+            
+            const errorElement = document.getElementById('register-error');
+            errorElement.textContent = '';
+            
+            // Validações
+            if (!name) {
+                errorElement.textContent = 'Por favor, digite seu nome completo.';
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                errorElement.textContent = 'Por favor, digite um email válido.';
+                return;
+            }
+            
+            if (!isValidPassword(password)) {
+                errorElement.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+                return;
+            }
+            
+            if (userType === 'supervisor' && supervisorCode !== '123$%qw&*eç') {
+                errorElement.textContent = 'Código de supervisor inválido.';
+                return;
+            }
+            
+            try {
+                // 1. Criar usuário no Firebase Authentication
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const userId = userCredential.user.uid;
+                
+                // 2. Salvar informações adicionais no Realtime Database
+                const userData = {
+                    nome: name,
+                    email: email,
+                    tipoUsuario: userType,
+                    dataCadastro: new Date().toISOString() // Formato: "YYYY-MM-DDTHH:mm:ss.sssZ"
+                };
+                
+                await database.ref('usuarios/' + userId).set(userData);
+                
+                // Feedback de sucesso
+                document.getElementById('register-success').textContent = 'Conta criada com sucesso!';
+                
+                // Limpar formulário
+                document.getElementById('register-name').value = '';
+                document.getElementById('register-email').value = '';
+                document.getElementById('register-password').value = '';
+                userTypeSelect.value = 'operacao';
+                document.getElementById('supervisor-code').value = '';
+                supervisorCodeGroup.classList.add('hidden');
+                
+                // Mostrar mensagem por 3 segundos e voltar para login
+                setTimeout(() => {
+                    registerContainer.classList.add('hidden');
+                    loginContainer.classList.remove('hidden');
+                    document.getElementById('register-success').textContent = '';
+                }, 3000);
+                
+            } catch (error) {
+                let errorMessage = 'Erro ao criar conta: ';
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMessage += 'Este email já está cadastrado.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage += 'Email inválido.';
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage += 'Senha muito fraca.';
+                        break;
+                    default:
+                        errorMessage += error.message;
+                }
+                errorElement.textContent = errorMessage;
+            }
+        });
+        
+        // Função de login
+        loginButton.addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            const errorElement = document.getElementById('login-error');
+            errorElement.textContent = '';
+            
+            if (!isValidEmail(email)) {
+                errorElement.textContent = 'Por favor, digite um email válido.';
+                return;
+            }
+            
+            if (!isValidPassword(password)) {
+                errorElement.textContent = 'Por favor, digite sua senha.';
+                return;
+            }
+            
+            try {
+                // 1. Fazer login com Firebase Auth
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const userId = userCredential.user.uid;
+                
+                // 2. Obter informações do usuário do Realtime Database
+                const userSnapshot = await database.ref('usuarios/' + userId).once('value');
+                const userData = userSnapshot.val();
+                
+                // 3. Redirecionar conforme o tipo de usuário
+                if (userData.tipoUsuario === 'operacao') {
+                    window.location.href = 'operacao.html';
+                } else if (userData.tipoUsuario === 'supervisor') {
+                    window.location.href = 'supervisor.html';
+                }
+                
+            } catch (error) {
+                let errorMessage = 'Erro ao fazer login: ';
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMessage += 'Nenhuma conta encontrada com este email.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage += 'Senha incorreta.';
+                        break;
+                    case 'auth/user-disabled':
+                        errorMessage += 'Esta conta foi desativada.';
+                        break;
+                    default:
+                        errorMessage += error.message;
+                }
+                errorElement.textContent = errorMessage;
+            }
+        });
+    </script>
+</body>
+</html>
