@@ -6,6 +6,53 @@
     <title>Área de Operação - Controle de Manutenções</title>
     <link rel="stylesheet" href="ope.css">
     <style>
+        /* Estilos para o container de imagens */
+        .imagem-container {
+            margin-bottom: 15px;
+            border: 1px dashed #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .imagem-container .remove-imagem {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .add-imagem-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #f0f0f0;
+            border: 1px dashed #999;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        
+        .add-imagem-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        /* Ajustes para o modal */
+        #modal-conclusao .form-conclusao {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
@@ -56,9 +103,13 @@
                         <textarea id="observacoes" placeholder="Detalhes da conclusão"></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="foto-conclusao"><i class="material-icons">photo_camera</i> Foto da Conclusão (opcional, máx. 1MB):</label>
-                        <input type="file" id="foto-conclusao" accept="image/*">
-                        <div class="tamanho-imagem" id="tamanho-foto"></div>
+                        <label><i class="material-icons">photo_camera</i> Fotos da Conclusão (opcional, máx. 1MB cada):</label>
+                        <div id="fotos-container">
+                            <!-- Campos de upload de fotos serão adicionados aqui -->
+                        </div>
+                        <div class="add-imagem-btn" id="add-foto-btn">
+                            <i class="material-icons">add</i> Adicionar outra foto
+                        </div>
                     </div>
                     <button class="btn btn-concluir" id="btn-finalizar"><i class="material-icons">check</i> Finalizar Manutenção</button>
                     <button class="btn" id="btn-cancelar" style="background-color: #f44336; margin-left: 10px;"><i class="material-icons">close</i> Cancelar</button>
@@ -103,8 +154,8 @@
         const descricaoManutencao = document.getElementById('descricao-manutencao');
         const btnFinalizar = document.getElementById('btn-finalizar');
         const btnCancelar = document.getElementById('btn-cancelar');
-        const inputFotoConclusao = document.getElementById('foto-conclusao');
-        const tamanhoFotoElement = document.getElementById('tamanho-foto');
+        const fotosContainer = document.getElementById('fotos-container');
+        const addFotoBtn = document.getElementById('add-foto-btn');
         const logoutBtn = document.getElementById('logout-btn');
 
         // Verificar autenticação ao carregar a página
@@ -135,20 +186,50 @@
             });
         });
 
-        // Mostrar tamanho da foto selecionada
-        inputFotoConclusao.addEventListener('change', function(e) {
-            if (this.files && this.files[0]) {
-                const tamanhoMB = this.files[0].size / 1024 / 1024;
-                tamanhoFotoElement.textContent = `Tamanho: ${tamanhoMB.toFixed(2)} MB`;
-                
-                // Limita o tamanho da foto a 1MB
-                if (tamanhoMB > 1) {
-                    alert('A foto deve ter no máximo 1MB');
-                    this.value = '';
-                    tamanhoFotoElement.textContent = '';
+        // Adicionar campo de upload de foto
+        function adicionarCampoFoto() {
+            const container = document.createElement('div');
+            container.className = 'imagem-container';
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.className = 'foto-input';
+            
+            const tamanhoInfo = document.createElement('div');
+            tamanhoInfo.className = 'tamanho-imagem';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-imagem';
+            removeBtn.innerHTML = '<i class="material-icons">remove</i>';
+            removeBtn.addEventListener('click', () => {
+                container.remove();
+            });
+            
+            input.addEventListener('change', function(e) {
+                if (this.files && this.files[0]) {
+                    const tamanhoMB = this.files[0].size / 1024 / 1024;
+                    tamanhoInfo.textContent = `Tamanho: ${tamanhoMB.toFixed(2)} MB`;
+                    
+                    if (tamanhoMB > 1) {
+                        alert('A foto deve ter no máximo 1MB');
+                        this.value = '';
+                        tamanhoInfo.textContent = '';
+                    }
                 }
-            }
-        });
+            });
+            
+            container.appendChild(input);
+            container.appendChild(tamanhoInfo);
+            container.appendChild(removeBtn);
+            fotosContainer.appendChild(container);
+        }
+
+        // Adicionar o primeiro campo de foto ao carregar a página
+        adicionarCampoFoto();
+        
+        // Adicionar mais campos de foto quando o botão for clicado
+        addFotoBtn.addEventListener('click', adicionarCampoFoto);
 
         // Função para converter imagem em Base64
         function converterImagemParaBase64(file) {
@@ -214,8 +295,12 @@
                 `${diasRestantes} dia(s) restante(s)`;
             
             let imagemHtml = '';
-            if (manutencao.imagemBase64) {
-                imagemHtml = `<img src="${manutencao.imagemBase64}" alt="Imagem da manutenção" class="imagem-manutencao">`;
+            if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
+                imagemHtml = '<div class="imagens-manutencao">';
+                manutencao.imagensBase64.forEach((imagem, index) => {
+                    imagemHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
+                });
+                imagemHtml += '</div>';
             }
             
             let botoesHtml = '';
@@ -240,9 +325,12 @@
                     </div>
                 `;
                 
-                if (manutencao.fotoConclusaoBase64) {
-                    imagemHtml += `<h4 style="margin-top: 15px;">Foto da Conclusão:</h4>
-                                  <img src="${manutencao.fotoConclusaoBase64}" alt="Foto da conclusão" class="imagem-manutencao">`;
+                if (manutencao.fotosConclusaoBase64 && manutencao.fotosConclusaoBase64.length > 0) {
+                    imagemHtml += '<div class="fotos-conclusao"><h4 style="margin-top: 15px;">Fotos da Conclusão:</h4>';
+                    manutencao.fotosConclusaoBase64.forEach((foto, index) => {
+                        imagemHtml += `<img src="${foto}" alt="Foto da conclusão ${index + 1}" class="imagem-manutencao">`;
+                    });
+                    imagemHtml += '</div>';
                 }
                 
                 card.innerHTML += conclusaoHtml;
@@ -289,6 +377,10 @@
             const hoje = new Date().toISOString().split('T')[0];
             document.getElementById('data-conclusao-real').value = hoje;
             
+            // Limpa os campos de fotos anteriores e adiciona um novo
+            fotosContainer.innerHTML = '';
+            adicionarCampoFoto();
+            
             // Mostra o modal corretamente
             modalConclusao.style.display = 'flex';
         }
@@ -297,8 +389,6 @@
         function fecharModalConclusao() {
             modalConclusao.style.display = 'none';
             manutencaoAtual = null;
-            document.getElementById('foto-conclusao').value = '';
-            tamanhoFotoElement.textContent = '';
         }
 
         // Função para carregar manutenções abertas
@@ -379,7 +469,22 @@
             const dataConclusaoReal = document.getElementById('data-conclusao-real').value;
             const responsavel = document.getElementById('responsavel').value.trim();
             const observacoes = document.getElementById('observacoes').value.trim();
-            const fotoConclusao = document.getElementById('foto-conclusao').files[0];
+            
+            // Obter todas as fotos selecionadas
+            const inputsFoto = document.querySelectorAll('.foto-input');
+            const fotosConclusaoBase64 = [];
+            
+            for (const input of inputsFoto) {
+                if (input.files && input.files[0]) {
+                    try {
+                        const fotoBase64 = await converterImagemParaBase64(input.files[0]);
+                        fotosConclusaoBase64.push(fotoBase64);
+                    } catch (error) {
+                        alert('Erro ao processar uma das fotos: ' + error.message);
+                        return;
+                    }
+                }
+            }
             
             // Validações
             if (!dataConclusaoReal || !responsavel) {
@@ -392,24 +497,13 @@
                 return;
             }
             
-            let fotoConclusaoBase64 = null;
-            
-            if (fotoConclusao) {
-                try {
-                    fotoConclusaoBase64 = await converterImagemParaBase64(fotoConclusao);
-                } catch (error) {
-                    alert('Erro ao processar a foto: ' + error.message);
-                    return;
-                }
-            }
-            
             // Preparar dados para atualização
             const atualizacao = {
                 status: 'concluida',
                 dataConclusaoReal,
                 responsavel,
                 observacoes: observacoes || null,
-                fotoConclusaoBase64
+                fotosConclusaoBase64: fotosConclusaoBase64.length > 0 ? fotosConclusaoBase64 : null
             };
             
             // Atualizar no banco de dados

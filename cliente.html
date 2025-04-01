@@ -3,55 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Área do Supervisor - Controle de Manutenções</title>
+    <title>Área do Cliente - Controle de Manutenções</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="sup.css">
     <style>
-        /* Adicione esses estilos ao seu arquivo CSS */
-        .imagem-container {
-            margin-bottom: 15px;
-            border: 1px dashed #ccc;
-            padding: 10px;
-            border-radius: 4px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .abas {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
             position: relative;
         }
         
-        .imagem-container .remove-imagem {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .aba {
+            padding: 12px 20px;
             cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            transition: all 0.3s ease;
         }
         
-        .add-imagem-btn {
+        .aba.ativa {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+            margin-bottom: -1px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .conteudo-aba {
+            display: none;
+            padding: 20px 0;
+        }
+        
+        .conteudo-aba.ativa {
+            display: block;
+        }
+        
+        .manutencao-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .manutencao-card.prioridade-alta {
+            border-left-color: #e74c3c;
+        }
+        
+        .manutencao-card.prioridade-media {
+            border-left-color: #f39c12;
+        }
+        
+        .manutencao-card.prioridade-baixa {
+            border-left-color: #2ecc71;
+        }
+        
+        .manutencao-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .info-card {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .info-item {
             display: flex;
             align-items: center;
             gap: 5px;
-            background: #f0f0f0;
-            border: 1px dashed #999;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 5px;
+            font-size: 14px;
         }
         
-        .add-imagem-btn:hover {
-            background: #e0e0e0;
+        .prioridade {
+            font-weight: bold;
+        }
+        
+        .dias-restantes {
+            font-weight: bold;
+        }
+        
+        .dias-restantes.normal {
+            color: #2ecc71;
+        }
+        
+        .dias-restantes.atencao {
+            color: #f39c12;
+        }
+        
+        .dias-restantes.critico {
+            color: #e74c3c;
+        }
+        
+        .imagem-manutencao {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        .imagens-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .detalhes-conclusao {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed #ddd;
+        }
+        
+        .detalhes-conclusao h4 {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .sem-manutencoes {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+        
+        .sem-manutencoes i {
+            font-size: 40px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            right: 0;
+            top: 0;
+            padding: 12px 20px;
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .data-abertura {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1><i class="material-icons">supervisor_account</i> Área do Supervisor</h1>
+        <h1><i class="material-icons">visibility</i> Área do Cliente</h1>
         
         <div class="abas">
             <div class="aba ativa" data-aba="abertas">Manutenções Abertas</div>
@@ -63,40 +213,6 @@
         
         <!-- Aba de Manutenções Abertas -->
         <div id="abertas" class="conteudo-aba ativa">
-            <div class="form-manutencao">
-                <h2><i class="material-icons">add_circle</i> Abrir Nova Manutenção</h2>
-                <div class="form-group">
-                    <label for="titulo"><i class="material-icons">title</i> Título:</label>
-                    <input type="text" id="titulo" placeholder="Título da manutenção" required maxlength="99">
-                </div>
-                <div class="form-group">
-                    <label for="descricao"><i class="material-icons">description</i> Descrição:</label>
-                    <textarea id="descricao" placeholder="Descreva detalhadamente o que precisa ser feito" required maxlength="499"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="prioridade"><i class="material-icons">priority_high</i> Prioridade:</label>
-                    <select id="prioridade" required>
-                        <option value="alta">Alta</option>
-                        <option value="media" selected>Média</option>
-                        <option value="baixa">Baixa</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="data-conclusao"><i class="material-icons">event</i> Data de Conclusão:</label>
-                    <input type="date" id="data-conclusao" required>
-                </div>
-                <div class="form-group">
-                    <label><i class="material-icons">image</i> Imagens (opcional, máximo 1MB cada):</label>
-                    <div id="imagens-container">
-                        <!-- Campos de upload de imagens serão adicionados aqui -->
-                    </div>
-                    <div class="add-imagem-btn" id="add-imagem-btn">
-                        <i class="material-icons">add</i> Adicionar outra imagem
-                    </div>
-                </div>
-                <button class="btn" id="btn-salvar"><i class="material-icons">save</i> Salvar Manutenção</button>
-            </div>
-            
             <h2><i class="material-icons">list_alt</i> Manutenções Abertas</h2>
             <div id="manutencoes-abertas">
                 <!-- Manutenções abertas serão carregadas aqui -->
@@ -139,64 +255,28 @@
             if (!user) {
                 window.location.href = 'index.html';
             } else {
-                // Verificar se o usuário é supervisor
+                // Verificar se o usuário é cliente
                 database.ref('usuarios/' + user.uid).once('value').then(snapshot => {
                     const userData = snapshot.val();
-                    if (!userData || userData.tipoUsuario !== 'supervisor') {
+                    if (!userData || userData.tipoUsuario !== 'cliente') {
                         auth.signOut().then(() => {
                             window.location.href = 'index.html';
                         });
                     } else {
-                        // Usuário autenticado e é supervisor - carregar conteúdo
+                        // Usuário autenticado e é cliente - carregar conteúdo
                         carregarManutencoesAbertas();
                     }
                 });
             }
         });
-        document.addEventListener('DOMContentLoaded', function() {
-            // Seleciona todas as abas
-            const abas = document.querySelectorAll('.aba');
-            
-            // Adiciona evento de clique para cada aba
-            abas.forEach(aba => {
-                aba.addEventListener('click', function() {
-                    // Remove a classe 'ativa' de todas as abas
-                    abas.forEach(a => a.classList.remove('ativa'));
-                    
-                    // Adiciona a classe 'ativa' apenas na aba clicada
-                    this.classList.add('ativa');
-                    
-                    // Oculta todos os conteúdos de aba
-                    document.querySelectorAll('.conteudo-aba').forEach(conteudo => {
-                        conteudo.classList.remove('ativa');
-                    });
-                    
-                    // Mostra o conteúdo correspondente à aba clicada
-                    const abaAlvo = this.getAttribute('data-aba');
-                    document.getElementById(abaAlvo).classList.add('ativa');
-                });
-            });
-            
-            // Carrega o conteúdo inicial da primeira aba
-            carregarManutencoesAbertas();
-        });
 
         // Referências
         const manutencoesRef = database.ref('manutencoes');
-        const formElements = {
-            titulo: document.getElementById('titulo'),
-            descricao: document.getElementById('descricao'),
-            prioridade: document.getElementById('prioridade'),
-            dataConclusao: document.getElementById('data-conclusao')
-        };
-        const imagensContainer = document.getElementById('imagens-container');
-        const addImagemBtn = document.getElementById('add-imagem-btn');
-        const abas = document.querySelectorAll('.aba');
-        const conteudosAbas = document.querySelectorAll('.conteudo-aba');
         const manutencoesAbertasContainer = document.getElementById('manutencoes-abertas');
         const manutencoesConcluidasContainer = document.getElementById('manutencoes-concluidas');
-        const btnSalvar = document.getElementById('btn-salvar');
         const logoutBtn = document.getElementById('logout-btn');
+        const abas = document.querySelectorAll('.aba');
+        const conteudosAbas = document.querySelectorAll('.conteudo-aba');
 
         // Logout
         logoutBtn.addEventListener('click', () => {
@@ -206,67 +286,6 @@
                 console.error('Erro ao fazer logout:', error);
             });
         });
-
-        // Adicionar campo de upload de imagem
-        function adicionarCampoImagem() {
-            const container = document.createElement('div');
-            container.className = 'imagem-container';
-            
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.className = 'imagem-input';
-            
-            const tamanhoInfo = document.createElement('div');
-            tamanhoInfo.className = 'tamanho-imagem';
-            
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'remove-imagem';
-            removeBtn.innerHTML = '<i class="material-icons">remove</i>';
-            removeBtn.addEventListener('click', () => {
-                container.remove();
-            });
-            
-            input.addEventListener('change', function(e) {
-                if (this.files && this.files[0]) {
-                    const tamanhoMB = this.files[0].size / 1024 / 1024;
-                    tamanhoInfo.textContent = `Tamanho: ${tamanhoMB.toFixed(2)} MB`;
-                    
-                    if (tamanhoMB > 1) {
-                        alert('A imagem deve ter no máximo 1MB');
-                        this.value = '';
-                        tamanhoInfo.textContent = '';
-                    }
-                }
-            });
-            
-            container.appendChild(input);
-            container.appendChild(tamanhoInfo);
-            container.appendChild(removeBtn);
-            imagensContainer.appendChild(container);
-        }
-
-        // Adicionar o primeiro campo de imagem ao carregar a página
-        adicionarCampoImagem();
-        
-        // Adicionar mais campos de imagem quando o botão for clicado
-        addImagemBtn.addEventListener('click', adicionarCampoImagem);
-
-        // Função para converter imagem em Base64
-        function converterImagemParaBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        // Função para validar formato de data (YYYY-MM-DD)
-        function isValidDate(dateString) {
-            const regex = /^\d{4}-\d{2}-\d{2}$/;
-            return regex.test(dateString);
-        }
 
         // Função para calcular dias restantes
         function calcularDiasRestantes(dataConclusao) {
@@ -298,8 +317,8 @@
             });
         }
 
-        // Função para criar card de manutenção aberta
-        function criarCardManutencaoAberta(manutencao, key) {
+        // Função para criar card de manutenção aberta (versão somente leitura)
+        function criarCardManutencaoAberta(manutencao) {
             const card = document.createElement('div');
             card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
             
@@ -311,17 +330,18 @@
             
             let imagensHtml = '';
             if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
-                imagensHtml = '<div class="imagens-manutencao">';
+                imagensHtml = '<div class="imagens-container">';
                 manutencao.imagensBase64.forEach((imagem, index) => {
                     imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
                 });
                 imagensHtml += '</div>';
             }
             
+            // Formatar data de abertura
+            const dataAbertura = manutencao.dataAbertura ? new Date(manutencao.dataAbertura).toLocaleString() : 'Data não informada';
+            
             card.innerHTML = `
-                <div class="acoes">
-                    <button class="btn-excluir" data-key="${key}"><i class="material-icons">delete</i> Excluir</button>
-                </div>
+                <div class="data-abertura">Aberta em: ${dataAbertura}</div>
                 <h3>${manutencao.titulo}</h3>
                 <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
                 
@@ -342,35 +362,40 @@
                 ${imagensHtml}
             `;
             
-            card.querySelector('.btn-excluir').addEventListener('click', () => excluirManutencao(key));
             return card;
         }
 
-        // Função para criar card de manutenção concluída
-        function criarCardManutencaoConcluida(manutencao, key) {
+        // Função para criar card de manutenção concluída (versão somente leitura)
+        function criarCardManutencaoConcluida(manutencao) {
             const card = document.createElement('div');
             card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
             
-            let imagensHtml = '';
+            // Imagens da abertura da manutenção
+            let imagensAberturaHtml = '';
             if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
-                imagensHtml = '<div class="imagens-manutencao">';
+                imagensAberturaHtml = '<div class="detalhes-conclusao"><h4><i class="material-icons">image</i> Fotos da Abertura:</h4><div class="imagens-container">';
                 manutencao.imagensBase64.forEach((imagem, index) => {
-                    imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
+                    imagensAberturaHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
                 });
-                imagensHtml += '</div>';
+                imagensAberturaHtml += '</div></div>';
             }
             
-            let fotoConclusaoHtml = '';
-            if (manutencao.fotoConclusaoBase64) {
-                fotoConclusaoHtml = `
-                    <div class="detalhes-conclusao">
-                        <h4><i class="material-icons">photo_camera</i> Foto da Conclusão:</h4>
-                        <img src="${manutencao.fotoConclusaoBase64}" alt="Foto da conclusão" class="imagem-manutencao">
-                    </div>
-                `;
+            // Fotos da conclusão
+            let fotosConclusaoHtml = '';
+            if (manutencao.fotosConclusaoBase64 && manutencao.fotosConclusaoBase64.length > 0) {
+                fotosConclusaoHtml = '<div class="detalhes-conclusao"><h4><i class="material-icons">photo_camera</i> Fotos da Conclusão:</h4><div class="imagens-container">';
+                manutencao.fotosConclusaoBase64.forEach((foto, index) => {
+                    fotosConclusaoHtml += `<img src="${foto}" alt="Foto da conclusão ${index + 1}" class="imagem-manutencao">`;
+                });
+                fotosConclusaoHtml += '</div></div>';
             }
+            
+            // Formatar datas
+            const dataAbertura = manutencao.dataAbertura ? new Date(manutencao.dataAbertura).toLocaleString() : 'Data não informada';
+            const dataConclusaoReal = manutencao.dataConclusaoReal ? new Date(manutencao.dataConclusaoReal).toLocaleString() : 'Data não informada';
             
             card.innerHTML = `
+                <div class="data-abertura">Aberta em: ${dataAbertura}</div>
                 <h3>${manutencao.titulo}</h3>
                 <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
                 
@@ -384,15 +409,17 @@
                         <span>Prazo original: ${manutencao.dataConclusao}</span>
                     </div>
                 </div>
-                ${imagensHtml}
+                
+                ${imagensAberturaHtml}
                 
                 <div class="detalhes-conclusao">
                     <h4><i class="material-icons">done_all</i> Detalhes da Conclusão:</h4>
                     <p><strong>Responsável:</strong> ${manutencao.responsavel || 'Não informado'}</p>
-                    <p><strong>Data de Conclusão:</strong> ${manutencao.dataConclusaoReal || 'Não informada'}</p>
+                    <p><strong>Data de Conclusão:</strong> ${dataConclusaoReal}</p>
                     <p><strong>Observações:</strong> ${manutencao.observacoes || 'Nenhuma observação registrada'}</p>
                 </div>
-                ${fotoConclusaoHtml}
+                
+                ${fotosConclusaoHtml}
             `;
             
             return card;
@@ -419,7 +446,7 @@
                         } else {
                             manutencoesAbertasContainer.innerHTML = '';
                             manutencoesOrdenadas.forEach(manutencao => {
-                                const card = criarCardManutencaoAberta(manutencao, manutencao.key);
+                                const card = criarCardManutencaoAberta(manutencao);
                                 manutencoesAbertasContainer.appendChild(card);
                             });
                         }
@@ -457,7 +484,7 @@
                         } else {
                             manutencoesConcluidasContainer.innerHTML = '';
                             manutencoes.forEach(manutencao => {
-                                const card = criarCardManutencaoConcluida(manutencao, manutencao.key);
+                                const card = criarCardManutencaoConcluida(manutencao);
                                 manutencoesConcluidasContainer.appendChild(card);
                             });
                         }
@@ -469,95 +496,6 @@
                     console.error('Erro ao carregar manutenções concluídas:', error);
                     manutencoesConcluidasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções concluídas.</div>';
                 });
-        }
-
-        // Função para salvar nova manutenção
-        btnSalvar.addEventListener('click', async () => {
-            const titulo = formElements.titulo.value.trim();
-            const descricao = formElements.descricao.value.trim();
-            const prioridade = formElements.prioridade.value;
-            const dataConclusao = formElements.dataConclusao.value;
-            
-            // Validações
-            if (!titulo || !descricao || !dataConclusao) {
-                alert('Preencha todos os campos obrigatórios!');
-                return;
-            }
-            
-            if (!isValidDate(dataConclusao)) {
-                alert('Formato de data inválido. Use YYYY-MM-DD');
-                return;
-            }
-            
-            if (titulo.length > 100) {
-                alert('O título deve ter no máximo 100 caracteres');
-                return;
-            }
-            
-            if (descricao.length > 500) {
-                alert('A descrição deve ter no máximo 500 caracteres');
-                return;
-            }
-            
-            // Obter todas as imagens selecionadas
-            const inputsImagem = document.querySelectorAll('.imagem-input');
-            const imagensBase64 = [];
-            
-            for (const input of inputsImagem) {
-                if (input.files && input.files[0]) {
-                    try {
-                        const imagemBase64 = await converterImagemParaBase64(input.files[0]);
-                        imagensBase64.push(imagemBase64);
-                    } catch (error) {
-                        alert('Erro ao processar uma das imagens: ' + error.message);
-                        return;
-                    }
-                }
-            }
-            
-            const novaManutencao = {
-                titulo,
-                descricao,
-                prioridade,
-                dataConclusao,
-                imagensBase64, // Agora é um array de imagens
-                status: 'aberta',
-                dataAbertura: new Date().toISOString()
-            };
-            
-            manutencoesRef.push(novaManutencao)
-                .then(() => {
-                    alert('Manutenção cadastrada com sucesso!');
-                    // Limpar formulário
-                    formElements.titulo.value = '';
-                    formElements.descricao.value = '';
-                    formElements.prioridade.value = 'media';
-                    formElements.dataConclusao.value = '';
-                    // Limpar todos os campos de imagem
-                    imagensContainer.innerHTML = '';
-                    // Adicionar novamente o primeiro campo de imagem
-                    adicionarCampoImagem();
-                    carregarManutencoesAbertas();
-                })
-                .catch(error => {
-                    console.error('Erro ao salvar manutenção:', error);
-                    alert('Erro ao salvar manutenção. Consulte o console para mais detalhes.');
-                });
-        });
-
-        // Função para excluir manutenção
-        function excluirManutencao(key) {
-            if (confirm('Tem certeza que deseja excluir esta manutenção?')) {
-                manutencoesRef.child(key).remove()
-                    .then(() => {
-                        console.log('Manutenção excluída com sucesso');
-                        carregarManutencoesAbertas();
-                    })
-                    .catch(error => {
-                        console.error('Erro ao excluir manutenção:', error);
-                        alert('Erro ao excluir manutenção. Consulte o console para mais detalhes.');
-                    });
-            }
         }
 
         // Event Listeners para abas
@@ -578,10 +516,6 @@
                 }
             });
         });
-
-        // Configura a data mínima como hoje
-        const hoje = new Date().toISOString().split('T')[0];
-        formElements.dataConclusao.min = hoje;
 
         // Carrega as manutenções abertas ao iniciar
         carregarManutencoesAbertas();
