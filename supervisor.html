@@ -47,6 +47,100 @@
         .add-imagem-btn:hover {
             background: #e0e0e0;
         }
+        
+        /* Modal de edição */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .info-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+}
+
+.info-item i {
+    color: #555;
+}
+        
+        .close-modal:hover {
+            color: black;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .imagem-existente {
+            position: relative;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .imagem-existente img {
+            max-width: 100px;
+            max-height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .remove-imagem-existente {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .imagens-existentes-container {
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
@@ -108,6 +202,57 @@
             <h2><i class="material-icons">check_circle</i> Manutenções Concluídas</h2>
             <div id="manutencoes-concluidas">
                 <!-- Manutenções concluídas serão carregadas aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Edição -->
+    <div id="modal-edicao" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2><i class="material-icons">edit</i> Editar Manutenção</h2>
+            
+            <div class="form-group">
+                <label for="edit-titulo"><i class="material-icons">title</i> Título:</label>
+                <input type="text" id="edit-titulo" placeholder="Título da manutenção" required maxlength="99">
+            </div>
+            <div class="form-group">
+                <label for="edit-descricao"><i class="material-icons">description</i> Descrição:</label>
+                <textarea id="edit-descricao" placeholder="Descreva detalhadamente o que precisa ser feito" required maxlength="499"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="edit-prioridade"><i class="material-icons">priority_high</i> Prioridade:</label>
+                <select id="edit-prioridade" required>
+                    <option value="alta">Alta</option>
+                    <option value="media" selected>Média</option>
+                    <option value="baixa">Baixa</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="edit-data-conclusao"><i class="material-icons">event</i> Data de Conclusão:</label>
+                <input type="date" id="edit-data-conclusao" required>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="material-icons">image</i> Imagens Existentes:</label>
+                <div class="imagens-existentes-container" id="imagens-existentes">
+                    <!-- Imagens existentes serão exibidas aqui -->
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label><i class="material-icons">image</i> Novas Imagens (opcional, máximo 1MB cada):</label>
+                <div id="edit-imagens-container">
+                    <!-- Campos de upload de novas imagens serão adicionados aqui -->
+                </div>
+                <div class="add-imagem-btn" id="edit-add-imagem-btn">
+                    <i class="material-icons">add</i> Adicionar outra imagem
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn" id="btn-cancelar-edicao"><i class="material-icons">cancel</i> Cancelar</button>
+                <button class="btn btn-primary" id="btn-salvar-edicao"><i class="material-icons">save</i> Salvar Alterações</button>
             </div>
         </div>
     </div>
@@ -198,6 +343,26 @@
         const btnSalvar = document.getElementById('btn-salvar');
         const logoutBtn = document.getElementById('logout-btn');
 
+        // Elementos do modal de edição
+        const modalEdicao = document.getElementById('modal-edicao');
+        const closeModalBtn = document.querySelector('.close-modal');
+        const btnCancelarEdicao = document.getElementById('btn-cancelar-edicao');
+        const btnSalvarEdicao = document.getElementById('btn-salvar-edicao');
+        const editFormElements = {
+            titulo: document.getElementById('edit-titulo'),
+            descricao: document.getElementById('edit-descricao'),
+            prioridade: document.getElementById('edit-prioridade'),
+            dataConclusao: document.getElementById('edit-data-conclusao')
+        };
+        const editImagensContainer = document.getElementById('edit-imagens-container');
+        const editAddImagemBtn = document.getElementById('edit-add-imagem-btn');
+        const imagensExistentesContainer = document.getElementById('imagens-existentes');
+        
+        // Variável para armazenar a manutenção sendo editada
+        let manutencaoEditando = null;
+        let imagensRemovidas = [];
+        let novasImagensBase64 = [];
+
         // Logout
         logoutBtn.addEventListener('click', () => {
             auth.signOut().then(() => {
@@ -208,9 +373,9 @@
         });
 
         // Adicionar campo de upload de imagem
-        function adicionarCampoImagem() {
-            const container = document.createElement('div');
-            container.className = 'imagem-container';
+        function adicionarCampoImagem(container, isEdit = false) {
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'imagem-container';
             
             const input = document.createElement('input');
             input.type = 'file';
@@ -224,7 +389,7 @@
             removeBtn.className = 'remove-imagem';
             removeBtn.innerHTML = '<i class="material-icons">remove</i>';
             removeBtn.addEventListener('click', () => {
-                container.remove();
+                containerDiv.remove();
             });
             
             input.addEventListener('change', function(e) {
@@ -240,17 +405,20 @@
                 }
             });
             
-            container.appendChild(input);
-            container.appendChild(tamanhoInfo);
-            container.appendChild(removeBtn);
-            imagensContainer.appendChild(container);
+            containerDiv.appendChild(input);
+            containerDiv.appendChild(tamanhoInfo);
+            containerDiv.appendChild(removeBtn);
+            container.appendChild(containerDiv);
         }
 
         // Adicionar o primeiro campo de imagem ao carregar a página
-        adicionarCampoImagem();
+        adicionarCampoImagem(imagensContainer);
         
         // Adicionar mais campos de imagem quando o botão for clicado
-        addImagemBtn.addEventListener('click', adicionarCampoImagem);
+        addImagemBtn.addEventListener('click', () => adicionarCampoImagem(imagensContainer));
+        
+        // Adicionar mais campos de imagem no modal de edição
+        editAddImagemBtn.addEventListener('click', () => adicionarCampoImagem(editImagensContainer, true));
 
         // Função para converter imagem em Base64
         function converterImagemParaBase64(file) {
@@ -300,138 +468,303 @@
 
         // Função para criar card de manutenção aberta
         function criarCardManutencaoAberta(manutencao, key) {
-            const card = document.createElement('div');
-            card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
-            
-            const diasRestantes = calcularDiasRestantes(manutencao.dataConclusao);
-            const classeDias = getClasseDiasRestantes(diasRestantes);
-            const textoDias = diasRestantes < 0 ? 
-                `Atrasada há ${Math.abs(diasRestantes)} dia(s)` : 
-                `${diasRestantes} dia(s) restante(s)`;
-            
-            let imagensHtml = '';
-            if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
-                imagensHtml = '<div class="imagens-manutencao">';
-                manutencao.imagensBase64.forEach((imagem, index) => {
-                    imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
-                });
-                imagensHtml += '</div>';
-            }
-            
-            card.innerHTML = `
-                <div class="acoes">
-                    <button class="btn-excluir" data-key="${key}"><i class="material-icons">delete</i> Excluir</button>
-                </div>
-                <h3>${manutencao.titulo}</h3>
-                <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
-                
-                <div class="info-card">
-                    <div class="info-item">
-                        <i class="material-icons">priority_high</i>
-                        <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="material-icons">event</i>
-                        <span>Concluir até: ${manutencao.dataConclusao}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="material-icons">schedule</i>
-                        <span class="dias-restantes ${classeDias}">${textoDias}</span>
-                    </div>
-                </div>
-                ${imagensHtml}
-            `;
-            
-            card.querySelector('.btn-excluir').addEventListener('click', () => excluirManutencao(key));
-            return card;
-        }
+    const card = document.createElement('div');
+    card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+    
+    const diasRestantes = calcularDiasRestantes(manutencao.dataConclusao);
+    const classeDias = getClasseDiasRestantes(diasRestantes);
+    const textoDias = diasRestantes < 0 ? 
+        `Atrasada há ${Math.abs(diasRestantes)} dia(s)` : 
+        `${diasRestantes} dia(s) restante(s)`;
+    
+    let imagensHtml = '';
+    if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
+        imagensHtml = '<div class="imagens-manutencao">';
+        manutencao.imagensBase64.forEach((imagem, index) => {
+            imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
+        });
+        imagensHtml += '</div>';
+    }
+    
+    // HTML base do card
+    let cardHTML = `
+        <div class="acoes">
+            <button class="btn-editar" data-key="${key}"><i class="material-icons">edit</i> Editar</button>
+            <button class="btn-excluir" data-key="${key}"><i class="material-icons">delete</i> Excluir</button>
+        </div>
+        <h3>${manutencao.titulo}</h3>
+        <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
+        
+        <div class="info-card">
+            <div class="info-item">
+                <i class="material-icons">priority_high</i>
+                <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">event</i>
+                <span>Concluir até: ${manutencao.dataConclusao}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">schedule</i>
+                <span class="dias-restantes ${classeDias}">${textoDias}</span>
+            </div>
+    `;
+    
+    // Adicionar informações de andamento se estiver em andamento
+    if (manutencao.status === 'em andamento') {
+        cardHTML += `
+            <div class="info-item">
+                <i class="material-icons">people</i>
+                <span>Pessoas trabalhando: ${manutencao.numPessoasTrabalhando || 1}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">hourglass_full</i>
+                <span>Status: Em andamento</span>
+            </div>
+        `;
+    }
+    
+    // Fechar div info-card e adicionar imagens
+    cardHTML += `</div>${imagensHtml}`;
+    
+    card.innerHTML = cardHTML;
+    
+    // Adicionar eventos aos botões
+    card.querySelector('.btn-excluir').addEventListener('click', () => excluirManutencao(key));
+    card.querySelector('.btn-editar').addEventListener('click', () => abrirModalEdicao(key, manutencao));
+    
+    return card;
+}
 
         // Função para criar card de manutenção concluída
-        function criarCardManutencaoConcluida(manutencao, key) {
-            const card = document.createElement('div');
-            card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+        // Função para criar card de manutenção concluída
+function criarCardManutencaoConcluida(manutencao, key) {
+    const card = document.createElement('div');
+    card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+    
+    // Imagens originais da abertura da manutenção
+    let imagensHtml = '';
+    if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
+        imagensHtml = '<div class="imagens-manutencao">';
+        imagensHtml += '<h4><i class="material-icons">image</i> Fotos da Abertura:</h4>';
+        manutencao.imagensBase64.forEach((imagem, index) => {
+            imagensHtml += `<img src="${imagem}" alt="Imagem da abertura ${index + 1}" class="imagem-manutencao">`;
+        });
+        imagensHtml += '</div>';
+    }
+    
+    // Fotos da conclusão
+    let fotosConclusaoHtml = '';
+    if (manutencao.fotosConclusaoBase64 && manutencao.fotosConclusaoBase64.length > 0) {
+        fotosConclusaoHtml = '<div class="imagens-manutencao">';
+        fotosConclusaoHtml += '<h4><i class="material-icons">photo_camera</i> Fotos da Conclusão:</h4>';
+        manutencao.fotosConclusaoBase64.forEach((imagem, index) => {
+            fotosConclusaoHtml += `<img src="${imagem}" alt="Foto da conclusão ${index + 1}" class="imagem-manutencao">`;
+        });
+        fotosConclusaoHtml += '</div>';
+    }
+    
+    card.innerHTML = `
+        <h3>${manutencao.titulo}</h3>
+        <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
+        
+        <div class="info-card">
+            <div class="info-item">
+                <i class="material-icons">priority_high</i>
+                <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">event</i>
+                <span>Prazo original: ${manutencao.dataConclusao}</span>
+            </div>
+        </div>
+        ${imagensHtml}
+        ${fotosConclusaoHtml}
+        
+        <div class="detalhes-conclusao">
+            <h4><i class="material-icons">done_all</i> Detalhes da Conclusão:</h4>
+            <p><strong>Responsável:</strong> ${manutencao.responsavel || 'Não informado'}</p>
+            <p><strong>Data de Conclusão:</strong> ${manutencao.dataConclusaoReal || 'Não informada'}</p>
+            <p><strong>Observações:</strong> ${manutencao.observacoes || 'Nenhuma observação registrada'}</p>
+        </div>
+    `;
+    
+    return card;
+}
+
+        // Função para abrir modal de edição
+        function abrirModalEdicao(key, manutencao) {
+            manutencaoEditando = { ...manutencao, key };
+            imagensRemovidas = [];
+            novasImagensBase64 = [];
             
-            let imagensHtml = '';
+            // Preencher formulário com os dados da manutenção
+            editFormElements.titulo.value = manutencao.titulo;
+            editFormElements.descricao.value = manutencao.descricao;
+            editFormElements.prioridade.value = manutencao.prioridade;
+            editFormElements.dataConclusao.value = manutencao.dataConclusao;
+            
+            // Limpar e preencher imagens existentes
+            imagensExistentesContainer.innerHTML = '';
             if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
-                imagensHtml = '<div class="imagens-manutencao">';
                 manutencao.imagensBase64.forEach((imagem, index) => {
-                    imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
+                    const divImagem = document.createElement('div');
+                    divImagem.className = 'imagem-existente';
+                    divImagem.innerHTML = `
+                        <img src="${imagem}" alt="Imagem existente ${index + 1}">
+                        <button class="remove-imagem-existente" data-index="${index}">&times;</button>
+                    `;
+                    imagensExistentesContainer.appendChild(divImagem);
                 });
-                imagensHtml += '</div>';
+                
+                // Adicionar eventos para remover imagens existentes
+                document.querySelectorAll('.remove-imagem-existente').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        imagensRemovidas.push(manutencao.imagensBase64[index]);
+                        this.parentElement.remove();
+                    });
+                });
+            } else {
+                imagensExistentesContainer.innerHTML = '<p>Nenhuma imagem adicionada</p>';
             }
             
-            let fotoConclusaoHtml = '';
-            if (manutencao.fotoConclusaoBase64) {
-                fotoConclusaoHtml = `
-                    <div class="detalhes-conclusao">
-                        <h4><i class="material-icons">photo_camera</i> Foto da Conclusão:</h4>
-                        <img src="${manutencao.fotoConclusaoBase64}" alt="Foto da conclusão" class="imagem-manutencao">
-                    </div>
-                `;
-            }
+            // Limpar e adicionar um campo para novas imagens
+            editImagensContainer.innerHTML = '';
+            adicionarCampoImagem(editImagensContainer, true);
             
-            card.innerHTML = `
-                <h3>${manutencao.titulo}</h3>
-                <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
-                
-                <div class="info-card">
-                    <div class="info-item">
-                        <i class="material-icons">priority_high</i>
-                        <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="material-icons">event</i>
-                        <span>Prazo original: ${manutencao.dataConclusao}</span>
-                    </div>
-                </div>
-                ${imagensHtml}
-                
-                <div class="detalhes-conclusao">
-                    <h4><i class="material-icons">done_all</i> Detalhes da Conclusão:</h4>
-                    <p><strong>Responsável:</strong> ${manutencao.responsavel || 'Não informado'}</p>
-                    <p><strong>Data de Conclusão:</strong> ${manutencao.dataConclusaoReal || 'Não informada'}</p>
-                    <p><strong>Observações:</strong> ${manutencao.observacoes || 'Nenhuma observação registrada'}</p>
-                </div>
-                ${fotoConclusaoHtml}
-            `;
-            
-            return card;
+            // Abrir modal
+            modalEdicao.style.display = 'block';
         }
 
+        // Função para fechar modal de edição
+        function fecharModalEdicao() {
+            modalEdicao.style.display = 'none';
+            manutencaoEditando = null;
+            imagensRemovidas = [];
+            novasImagensBase64 = [];
+        }
+
+        // Função para salvar edição de manutenção
+        // Função para salvar edição de manutenção
+async function salvarEdicaoManutencao() {
+    const titulo = editFormElements.titulo.value.trim();
+    const descricao = editFormElements.descricao.value.trim();
+    const prioridade = editFormElements.prioridade.value;
+    const dataConclusao = editFormElements.dataConclusao.value;
+    
+    // Validações (mantidas iguais)
+    if (!titulo || !descricao || !dataConclusao) {
+        alert('Preencha todos os campos obrigatórios!');
+        return;
+    }
+    
+    if (!isValidDate(dataConclusao)) {
+        alert('Formato de data inválido. Use YYYY-MM-DD');
+        return;
+    }
+    
+    if (titulo.length > 100) {
+        alert('O título deve ter no máximo 100 caracteres');
+        return;
+    }
+    
+    if (descricao.length > 500) {
+        alert('A descrição deve ter no máximo 500 caracteres');
+        return;
+    }
+    
+    // Obter todas as novas imagens selecionadas
+    const inputsImagem = editImagensContainer.querySelectorAll('.imagem-input');
+    const novasImagensBase64 = [];
+    
+    for (const input of inputsImagem) {
+        if (input.files && input.files[0]) {
+            try {
+                const imagemBase64 = await converterImagemParaBase64(input.files[0]);
+                novasImagensBase64.push(imagemBase64);
+            } catch (error) {
+                alert('Erro ao processar uma das imagens: ' + error.message);
+                return;
+            }
+        }
+    }
+    
+    // Filtrar imagens existentes que não foram removidas
+    let imagensAtualizadas = [];
+    
+    // Primeiro, verificar se há imagens existentes na manutenção original
+    if (manutencaoEditando.imagensBase64 && manutencaoEditando.imagensBase64.length > 0) {
+        // Obter todas as imagens que ainda estão sendo exibidas no container de imagens existentes
+        const imagensExibidas = Array.from(imagensExistentesContainer.querySelectorAll('img')).map(img => img.src);
+        
+        // Filtrar apenas as imagens originais que ainda estão sendo exibidas
+        imagensAtualizadas = manutencaoEditando.imagensBase64.filter(imagem => 
+            imagensExibidas.includes(imagem)
+        );
+    }
+    
+    // Adicionar novas imagens
+    imagensAtualizadas = [...imagensAtualizadas, ...novasImagensBase64];
+    
+    // Atualizar dados da manutenção
+    const dadosAtualizados = {
+        titulo,
+        descricao,
+        prioridade,
+        dataConclusao,
+        imagensBase64: imagensAtualizadas,
+        dataAtualizacao: new Date().toISOString()
+    };
+    
+    // Atualizar no Firebase
+    manutencoesRef.child(manutencaoEditando.key).update(dadosAtualizados)
+        .then(() => {
+            alert('Manutenção atualizada com sucesso!');
+            fecharModalEdicao();
+            carregarManutencoesAbertas();
+        })
+        .catch(error => {
+            console.error('Erro ao atualizar manutenção:', error);
+            alert('Erro ao atualizar manutenção. Consulte o console para mais detalhes.');
+        });
+}
         // Função para carregar manutenções abertas
         function carregarManutencoesAbertas() {
-            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
-            
-            manutencoesRef.orderByChild('status').equalTo('aberta').once('value')
-                .then(snapshot => {
-                    if (snapshot.exists()) {
-                        const manutencoes = [];
-                        snapshot.forEach(childSnapshot => {
-                            const manutencao = childSnapshot.val();
-                            manutencao.key = childSnapshot.key;
-                            manutencoes.push(manutencao);
-                        });
-                        
-                        const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
-                        
-                        if (manutencoesOrdenadas.length === 0) {
-                            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
-                        } else {
-                            manutencoesAbertasContainer.innerHTML = '';
-                            manutencoesOrdenadas.forEach(manutencao => {
-                                const card = criarCardManutencaoAberta(manutencao, manutencao.key);
-                                manutencoesAbertasContainer.appendChild(card);
-                            });
-                        }
-                    } else {
-                        manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
+    
+    manutencoesRef.orderByChild('status').once('value')
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const manutencoes = [];
+                snapshot.forEach(childSnapshot => {
+                    const manutencao = childSnapshot.val();
+                    if (manutencao.status !== 'concluida') {
+                        manutencao.key = childSnapshot.key;
+                        manutencoes.push(manutencao);
                     }
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar manutenções abertas:', error);
-                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
                 });
-        }
+                
+                const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
+                
+                if (manutencoesOrdenadas.length === 0) {
+                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+                } else {
+                    manutencoesAbertasContainer.innerHTML = '';
+                    manutencoesOrdenadas.forEach(manutencao => {
+                        const card = criarCardManutencaoAberta(manutencao, manutencao.key);
+                        manutencoesAbertasContainer.appendChild(card);
+                    });
+                }
+            } else {
+                manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar manutenções abertas:', error);
+            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
+        });
+}
 
         // Função para carregar manutenções concluídas
         function carregarManutencoesConcluidas() {
@@ -533,10 +866,12 @@
                     formElements.descricao.value = '';
                     formElements.prioridade.value = 'media';
                     formElements.dataConclusao.value = '';
-                    // Limpar todos os campos de imagem
-                    imagensContainer.innerHTML = '';
-                    // Adicionar novamente o primeiro campo de imagem
-                    adicionarCampoImagem();
+                                        // Limpar todos os campos de imagem
+                                        imagensContainer.innerHTML = '';
+                    // Adicionar um novo campo de imagem vazio
+                    adicionarCampoImagem(imagensContainer);
+                    
+                    // Recarregar a lista de manutenções abertas
                     carregarManutencoesAbertas();
                 })
                 .catch(error => {
@@ -547,10 +882,10 @@
 
         // Função para excluir manutenção
         function excluirManutencao(key) {
-            if (confirm('Tem certeza que deseja excluir esta manutenção?')) {
+            if (confirm('Tem certeza que deseja excluir esta manutenção? Esta ação não pode ser desfeita.')) {
                 manutencoesRef.child(key).remove()
                     .then(() => {
-                        console.log('Manutenção excluída com sucesso');
+                        alert('Manutenção excluída com sucesso!');
                         carregarManutencoesAbertas();
                     })
                     .catch(error => {
@@ -560,31 +895,25 @@
             }
         }
 
-        // Event Listeners para abas
-        abas.forEach(aba => {
-            aba.addEventListener('click', () => {
-                if (aba.id === 'logout-btn') return;
-                
-                abas.forEach(a => a.classList.remove('ativa'));
-                conteudosAbas.forEach(c => c.classList.remove('ativa'));
-                
-                aba.classList.add('ativa');
-                document.getElementById(aba.dataset.aba).classList.add('ativa');
-                
-                if (aba.dataset.aba === 'abertas') {
-                    carregarManutencoesAbertas();
-                } else if (aba.dataset.aba === 'concluidas') {
-                    carregarManutencoesConcluidas();
-                }
-            });
+        // Event listeners para o modal de edição
+        closeModalBtn.addEventListener('click', fecharModalEdicao);
+        btnCancelarEdicao.addEventListener('click', fecharModalEdicao);
+        btnSalvarEdicao.addEventListener('click', salvarEdicaoManutencao);
+
+        // Fechar modal ao clicar fora dele
+        window.addEventListener('click', (event) => {
+            if (event.target === modalEdicao) {
+                fecharModalEdicao();
+            }
         });
 
-        // Configura a data mínima como hoje
-        const hoje = new Date().toISOString().split('T')[0];
-        formElements.dataConclusao.min = hoje;
+        // Carregar manutenções concluídas quando a aba for clicada
+        document.querySelector('.aba[data-aba="concluidas"]').addEventListener('click', carregarManutencoesConcluidas);
 
-        // Carrega as manutenções abertas ao iniciar
-        carregarManutencoesAbertas();
+        // Definir a data mínima para o campo de data como hoje
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('data-conclusao').min = hoje;
+        document.getElementById('edit-data-conclusao').min = hoje;
     </script>
 </body>
 </html>

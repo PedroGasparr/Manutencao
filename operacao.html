@@ -53,6 +53,20 @@
             overflow-y: auto;
             padding-right: 10px;
         }
+        .botoes-manutencao {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-iniciar {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-iniciar:hover {
+    background-color: #0b7dda;
+}
     </style>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
@@ -185,6 +199,34 @@
                 console.error('Erro ao fazer logout:', error);
             });
         });
+        // Função para iniciar manutenção
+function iniciarManutencao(key) {
+    // Pedir o número de pessoas trabalhando
+    const numPessoas = prompt("Quantas pessoas estão trabalhando nesta tarefa?");
+    
+    if (numPessoas === null) return; // Usuário cancelou
+    if (!numPessoas || isNaN(numPessoas) || parseInt(numPessoas) <= 0) {
+        alert("Por favor, insira um número válido de pessoas (maior que 0)");
+        return;
+    }
+    
+    // Atualizar no banco de dados
+    const atualizacao = {
+        status: 'em andamento',
+        numPessoasTrabalhando: parseInt(numPessoas),
+        dataInicio: new Date().toISOString()
+    };
+    
+    database.ref('manutencoes').child(key).update(atualizacao)
+        .then(() => {
+            alert('Manutenção iniciada com sucesso!');
+            carregarManutencoesAbertas();
+        })
+        .catch(error => {
+            console.error('Erro ao iniciar manutenção:', error);
+            alert('Erro ao iniciar manutenção. Consulte o console para mais detalhes.');
+        });
+}
 
         // Adicionar campo de upload de foto
         function adicionarCampoFoto() {
@@ -306,9 +348,14 @@
             let botoesHtml = '';
             if (!concluida) {
                 botoesHtml = `
-                    <button class="btn btn-concluir" data-key="${key}">
-                        <i class="material-icons">done</i> Concluir
-                    </button>
+                    <div class="botoes-manutencao">
+                        <button class="btn btn-iniciar" data-key="${key}">
+                            <i class="material-icons">play_arrow</i> Iniciar Tarefa
+                        </button>
+                        <button class="btn btn-concluir" data-key="${key}">
+                            <i class="material-icons">done</i> Concluir
+                        </button>
+                    </div>
                 `;
             } else {
                 // Mostrar informações de conclusão se estiver concluída
@@ -361,8 +408,12 @@
             `;
             
             if (!concluida) {
-                card.querySelector('.btn-concluir').addEventListener('click', () => abrirModalConclusao(manutencao, key));
-            }
+            const btnIniciar = card.querySelector('.btn-iniciar');
+            const btnConcluir = card.querySelector('.btn-concluir');
+            
+            btnIniciar.addEventListener('click', () => iniciarManutencao(key));
+            btnConcluir.addEventListener('click', () => abrirModalConclusao(manutencao, key));
+        }
             
             return card;
         }
@@ -393,38 +444,58 @@
 
         // Função para carregar manutenções abertas
         function carregarManutencoesAbertas() {
-            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
-            
-            database.ref('manutencoes').orderByChild('status').equalTo('aberta').once('value')
-                .then(snapshot => {
-                    if (snapshot.exists()) {
-                        const manutencoes = [];
-                        snapshot.forEach(childSnapshot => {
-                            const manutencao = childSnapshot.val();
-                            manutencao.key = childSnapshot.key;
-                            manutencoes.push(manutencao);
-                        });
-                        
-                        const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
-                        
-                        if (manutencoesOrdenadas.length === 0) {
-                            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
-                        } else {
-                            manutencoesAbertasContainer.innerHTML = '';
-                            manutencoesOrdenadas.forEach(manutencao => {
-                                const card = criarCardManutencao(manutencao, manutencao.key);
-                                manutencoesAbertasContainer.appendChild(card);
-                            });
-                        }
-                    } else {
-                        manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
+    
+    database.ref('manutencoes').orderByChild('status').once('value')
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const manutencoes = [];
+                snapshot.forEach(childSnapshot => {
+                    const manutencao = childSnapshot.val();
+                    if (manutencao.status !== 'concluida') {
+                        manutencao.key = childSnapshot.key;
+                        manutencoes.push(manutencao);
                     }
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar manutenções:', error);
-                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
                 });
-        }
+                
+                const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
+                
+                if (manutencoesOrdenadas.length === 0) {
+                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+                } else {
+                    manutencoesAbertasContainer.innerHTML = '';
+                    manutencoesOrdenadas.forEach(manutencao => {
+                        const card = criarCardManutencao(manutencao, manutencao.key);
+                        
+                        // Adiciona informação de pessoas trabalhando se estiver em andamento
+                        if (manutencao.status === 'em andamento') {
+                            const infoAndamento = document.createElement('div');
+                            infoAndamento.className = 'info-card';
+                            infoAndamento.innerHTML = `
+                                <div class="info-item">
+                                    <i class="material-icons">people</i>
+                                    <span>Pessoas trabalhando: ${manutencao.numPessoasTrabalhando || 1}</span>
+                                </div>
+                                <div class="info-item">
+                                    <i class="material-icons">hourglass_full</i>
+                                    <span>Status: Em andamento</span>
+                                </div>
+                            `;
+                            card.insertBefore(infoAndamento, card.querySelector('.botoes-manutencao'));
+                        }
+                        
+                        manutencoesAbertasContainer.appendChild(card);
+                    });
+                }
+            } else {
+                manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar manutenções:', error);
+            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
+        });
+}
 
         // Função para carregar manutenções concluídas
         function carregarManutencoesConcluidas() {
@@ -499,12 +570,13 @@
             
             // Preparar dados para atualização
             const atualizacao = {
-                status: 'concluida',
-                dataConclusaoReal,
-                responsavel,
-                observacoes: observacoes || null,
-                fotosConclusaoBase64: fotosConclusaoBase64.length > 0 ? fotosConclusaoBase64 : null
-            };
+            status: 'concluida',
+            dataConclusaoReal,
+            responsavel,
+            observacoes: observacoes || null,
+            fotosConclusaoBase64: fotosConclusaoBase64.length > 0 ? fotosConclusaoBase64 : null,
+            numPessoasTrabalhando: null // Reseta o número de pessoas
+        };
             
             // Atualizar no banco de dados
             database.ref('manutencoes').child(manutencaoAtual.key).update(atualizacao)

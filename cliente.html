@@ -319,52 +319,69 @@
 
         // Função para criar card de manutenção aberta (versão somente leitura)
         function criarCardManutencaoAberta(manutencao) {
-            const card = document.createElement('div');
-            card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
-            
-            const diasRestantes = calcularDiasRestantes(manutencao.dataConclusao);
-            const classeDias = getClasseDiasRestantes(diasRestantes);
-            const textoDias = diasRestantes < 0 ? 
-                `Atrasada há ${Math.abs(diasRestantes)} dia(s)` : 
-                `${diasRestantes} dia(s) restante(s)`;
-            
-            let imagensHtml = '';
-            if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
-                imagensHtml = '<div class="imagens-container">';
-                manutencao.imagensBase64.forEach((imagem, index) => {
-                    imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
-                });
-                imagensHtml += '</div>';
-            }
-            
-            // Formatar data de abertura
-            const dataAbertura = manutencao.dataAbertura ? new Date(manutencao.dataAbertura).toLocaleString() : 'Data não informada';
-            
-            card.innerHTML = `
-                <div class="data-abertura">Aberta em: ${dataAbertura}</div>
-                <h3>${manutencao.titulo}</h3>
-                <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
-                
-                <div class="info-card">
-                    <div class="info-item">
-                        <i class="material-icons">priority_high</i>
-                        <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="material-icons">event</i>
-                        <span>Concluir até: ${manutencao.dataConclusao}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="material-icons">schedule</i>
-                        <span class="dias-restantes ${classeDias}">${textoDias}</span>
-                    </div>
-                </div>
-                ${imagensHtml}
-            `;
-            
-            return card;
-        }
-
+    const card = document.createElement('div');
+    card.className = `manutencao-card prioridade-${manutencao.prioridade}`;
+    
+    const diasRestantes = calcularDiasRestantes(manutencao.dataConclusao);
+    const classeDias = getClasseDiasRestantes(diasRestantes);
+    const textoDias = diasRestantes < 0 ? 
+        `Atrasada há ${Math.abs(diasRestantes)} dia(s)` : 
+        `${diasRestantes} dia(s) restante(s)`;
+    
+    let imagensHtml = '';
+    if (manutencao.imagensBase64 && manutencao.imagensBase64.length > 0) {
+        imagensHtml = '<div class="imagens-container">';
+        manutencao.imagensBase64.forEach((imagem, index) => {
+            imagensHtml += `<img src="${imagem}" alt="Imagem da manutenção ${index + 1}" class="imagem-manutencao">`;
+        });
+        imagensHtml += '</div>';
+    }
+    
+    // Formatar data de abertura
+    const dataAbertura = manutencao.dataAbertura ? new Date(manutencao.dataAbertura).toLocaleString() : 'Data não informada';
+    
+    // HTML base
+    let cardHTML = `
+        <div class="data-abertura">Aberta em: ${dataAbertura}</div>
+        <h3>${manutencao.titulo}</h3>
+        <p><strong>Descrição:</strong> ${manutencao.descricao}</p>
+        
+        <div class="info-card">
+            <div class="info-item">
+                <i class="material-icons">priority_high</i>
+                <span class="prioridade">${manutencao.prioridade.toUpperCase()}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">event</i>
+                <span>Concluir até: ${manutencao.dataConclusao}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">schedule</i>
+                <span class="dias-restantes ${classeDias}">${textoDias}</span>
+            </div>
+    `;
+    
+    // Adicionar informações de andamento se estiver em andamento
+    if (manutencao.status === 'em andamento') {
+        cardHTML += `
+            <div class="info-item">
+                <i class="material-icons">people</i>
+                <span>Pessoas trabalhando: ${manutencao.numPessoasTrabalhando || 1}</span>
+            </div>
+            <div class="info-item">
+                <i class="material-icons">hourglass_full</i>
+                <span>Status: Em andamento</span>
+            </div>
+        `;
+    }
+    
+    // Fechar div info-card e adicionar imagens
+    cardHTML += `</div>${imagensHtml}`;
+    
+    card.innerHTML = cardHTML;
+    
+    return card;
+}
         // Função para criar card de manutenção concluída (versão somente leitura)
         function criarCardManutencaoConcluida(manutencao) {
             const card = document.createElement('div');
@@ -427,38 +444,40 @@
 
         // Função para carregar manutenções abertas
         function carregarManutencoesAbertas() {
-            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
-            
-            manutencoesRef.orderByChild('status').equalTo('aberta').once('value')
-                .then(snapshot => {
-                    if (snapshot.exists()) {
-                        const manutencoes = [];
-                        snapshot.forEach(childSnapshot => {
-                            const manutencao = childSnapshot.val();
-                            manutencao.key = childSnapshot.key;
-                            manutencoes.push(manutencao);
-                        });
-                        
-                        const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
-                        
-                        if (manutencoesOrdenadas.length === 0) {
-                            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
-                        } else {
-                            manutencoesAbertasContainer.innerHTML = '';
-                            manutencoesOrdenadas.forEach(manutencao => {
-                                const card = criarCardManutencaoAberta(manutencao);
-                                manutencoesAbertasContainer.appendChild(card);
-                            });
-                        }
-                    } else {
-                        manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">hourglass_empty</i> Carregando manutenções...</div>';
+    
+    manutencoesRef.orderByChild('status').once('value')
+        .then(snapshot => {
+            if (snapshot.exists()) {
+                const manutencoes = [];
+                snapshot.forEach(childSnapshot => {
+                    const manutencao = childSnapshot.val();
+                    if (manutencao.status !== 'concluida') {
+                        manutencao.key = childSnapshot.key;
+                        manutencoes.push(manutencao);
                     }
-                })
-                .catch(error => {
-                    console.error('Erro ao carregar manutenções abertas:', error);
-                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
                 });
-        }
+                
+                const manutencoesOrdenadas = ordenarManutencoes(manutencoes);
+                
+                if (manutencoesOrdenadas.length === 0) {
+                    manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+                } else {
+                    manutencoesAbertasContainer.innerHTML = '';
+                    manutencoesOrdenadas.forEach(manutencao => {
+                        const card = criarCardManutencaoAberta(manutencao);
+                        manutencoesAbertasContainer.appendChild(card);
+                    });
+                }
+            } else {
+                manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">info</i> Nenhuma manutenção aberta no momento.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar manutenções abertas:', error);
+            manutencoesAbertasContainer.innerHTML = '<div class="sem-manutencoes"><i class="material-icons">error</i> Erro ao carregar manutenções.</div>';
+        });
+}
 
         // Função para carregar manutenções concluídas
         function carregarManutencoesConcluidas() {
